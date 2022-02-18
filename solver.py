@@ -116,7 +116,7 @@ if __name__ == '__main__':
         ]
 
         message = f'word list: {len(words)} words'
-        if len(words) <= 25:
+        if len(words) <= 200:
             print(f'{message} - {words["word"].tolist()}')
         else:
             print(message)
