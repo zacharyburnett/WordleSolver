@@ -89,7 +89,6 @@ def word_choices(
         for character in characters:
             words = words[words.str.get(index) != character]
 
-    words.reset_index(inplace=True, drop=True)
     return words
 
 
