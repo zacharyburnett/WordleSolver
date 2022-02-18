@@ -1,8 +1,9 @@
 from functools import cache
 from pathlib import Path
+import random
 from typing import Collection, Dict, List
 
-from pandas import Series
+from pandas import DataFrame, Series
 import pooch
 
 
@@ -29,12 +30,14 @@ def letter_probabilities(words: Series) -> Series:
     if not isinstance(words, Series):
         words = Series(words, dtype='string')
 
-    letters = Series({letter: words.str.count(letter).sum() for letter in 'abcdefghijklmnopqurstuvwxyz'})
+    letters = Series(
+        {letter: words.str.count(letter).sum() for letter in 'abcdefghijklmnopqurstuvwxyz'}
+    )
 
     return letters / letters.sum()
 
 
-def word_letter_probabilities(words: Series) -> Series:
+def word_letter_scores(words: Series) -> Series:
     """
     :param words: Series of words
     :return: words with their probability of use of distinct letters
@@ -50,10 +53,10 @@ def word_letter_probabilities(words: Series) -> Series:
 
 
 def word_choices(
-        words: Series,
-        in_place: Dict[int, str] = None,
-        out_of_place: Dict[int, List[str]] = None,
-        not_in_word: Collection[str] = None,
+    words: Series,
+    in_place: Dict[int, str] = None,
+    out_of_place: Dict[int, List[str]] = None,
+    not_in_word: Collection[str] = None,
 ) -> Series:
     """
     filter words based on parameters
@@ -101,31 +104,40 @@ if __name__ == '__main__':
     words = five_letter_words_english()
 
     # sort word list by combined distinct probability score
-    probabilities = word_letter_probabilities(words)
-    words = Series(probabilities.sort_values(ascending=False).index)
+    words = DataFrame(
+        {'word': words.values, 'letter_score': word_letter_scores(words).values},
+        index=words.index,
+    )
 
     # main loop
     while True:
-        words = word_choices(words, in_place, out_of_place, not_in_word)
+        words = words.loc[
+            word_choices(words['word'], in_place, out_of_place, not_in_word).index
+        ]
 
         message = f'word list: {len(words)} words'
-        if len(words) <= 50:
-            print(f'{message} - {words.tolist()}')
+        if len(words) <= 25:
+            print(f'{message} - {words["word"].tolist()}')
         else:
             print(message)
 
         if len(words) <= 1:
             if len(words) == 1:
-                print(f'the word should be "{words[0]}"')
+                print(f'the word should be "{words.iloc[0]["word"]}"')
             break
 
         # skip the first few most commonly-used words
-        suggestion = words.iloc[0]
-        print(f'suggestion: "{suggestion}"')
+        highest_letter_score_word = words[
+            words['letter_score'] == words['letter_score'].max()
+        ].iloc[0]['word']
+        most_used_word = words.iloc[0]['word']
+        print(f'highest letter score word: "{highest_letter_score_word}"')
+        print(f'random word: "{words.loc[random.choice(words.index), "word"]}"')
+        print(f'most-used word: "{most_used_word}"')
 
-        green = input(f'capitalize green letters: ').strip()
+        green = input(f'capitalize the green letters of your word choice: ').strip()
         if len(green) == 0:
-            green = suggestion
+            green = most_used_word
 
         word = green.lower()
         if len(green) > 0 and all(character.isupper() for character in green):
@@ -139,7 +151,9 @@ if __name__ == '__main__':
                 in_place[index] = letter
                 in_word_indices.add(index)
 
-        yellow = input(f'capitalize yellow letters ("{word}"): ').strip()
+        yellow = input(
+            f'capitalize the yellow letters of your word choice ("{word}"): '
+        ).strip()
         for index, letter in enumerate(yellow):
             if letter.isupper():
                 letter = letter.lower()
