@@ -144,7 +144,7 @@ if __name__ == '__main__':
             print(f'the word is "{word}"')
             break
 
-        in_word_indices = set((*in_place, *out_of_place))
+        in_word_indices = set()
         for index, letter in enumerate(green):
             if letter.isupper():
                 letter = letter.lower()
